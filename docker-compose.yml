@@ -1,0 +1,39 @@
+services:
+  postgres:
+    image: postgis/postgis:17-3.5
+    platform: linux/amd64
+    container_name: pgmr-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+
+    ports:
+      - "${DB_PORT}:5432"
+
+    volumes:
+      - pgmr-postgres-data:/var/lib/postgresql/data
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: pgmr-app
+    restart: unless-stopped
+
+    depends_on:
+      - postgres
+
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+
+    ports:
+      - "8080:8080"
+
+volumes:
+  pgmr-postgres-data:
