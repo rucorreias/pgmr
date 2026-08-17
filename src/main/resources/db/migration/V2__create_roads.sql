@@ -57,7 +57,7 @@ CREATE TABLE road_segments (
                                    CHECK (condition IN ('GOOD', 'FAIR', 'POOR', 'CRITICAL')),
 
                                CONSTRAINT chk_segment_status
-                                   CHECK (status IN ('ACTIVE', 'INACTIVE', 'UNDER_CONSTRUCTION'))
+                                   CHECK (status IN ('ACTIVE', 'INACTIVE', 'UNDER_CONSTRUCTION',' PERMANENTLY_CLOSED'))
 );
 
 CREATE INDEX idx_road_segments_road_id
