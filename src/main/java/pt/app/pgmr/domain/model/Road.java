@@ -2,6 +2,8 @@ package pt.app.pgmr.domain.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import pt.app.pgmr.domain.model.enums.RoadCondition;
+import pt.app.pgmr.domain.model.enums.RoadStatus;
 import pt.app.pgmr.domain.model.enums.RoadType;
 
 import java.math.BigDecimal;
@@ -38,13 +40,15 @@ public class Road {
     @Column(name = "length_km", precision = 10, scale = 3)
     private BigDecimal lengthKm;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     @Builder.Default
-    private String condition = "GOOD";
+    private RoadCondition condition = RoadCondition.GOOD;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     @Builder.Default
-    private String status = "ACTIVE";
+    private RoadStatus status = RoadStatus.ACTIVE;
 
     @Column(name = "created_at", nullable = false)
     @Builder.Default

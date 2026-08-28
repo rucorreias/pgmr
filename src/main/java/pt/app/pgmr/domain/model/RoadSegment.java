@@ -7,6 +7,7 @@ import pt.app.pgmr.domain.model.enums.RoadStatus;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import org.locationtech.jts.geom.LineString;
 
 @Entity
 @Table(
@@ -48,6 +49,9 @@ public class RoadSegment {
 
     @Column(name = "end_km", precision = 10, scale = 3)
     private BigDecimal endKm;
+
+    @Column(columnDefinition = "geometry(LineString,4326)")
+    private LineString geometry;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
