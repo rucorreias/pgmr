@@ -7,6 +7,8 @@ import pt.app.pgmr.domain.model.enums.RoadStatus;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.UUID;
+
 import org.locationtech.jts.geom.LineString;
 
 @Entity
@@ -27,8 +29,8 @@ import org.locationtech.jts.geom.LineString;
 public class RoadSegment {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(
