@@ -1,5 +1,6 @@
 package pt.app.pgmr.api.dto.road;
 
+import pt.app.pgmr.api.dto.geometry.GeometryDTO;
 import pt.app.pgmr.domain.model.enums.RoadCondition;
 import pt.app.pgmr.domain.model.enums.RoadStatus;
 
@@ -21,6 +22,7 @@ public record RoadSegmentResponse(
         String name,
         BigDecimal startKm,
         BigDecimal endKm,
+        GeometryDTO geometry,
         RoadCondition condition,
         RoadStatus status,
         OffsetDateTime createdAt,
