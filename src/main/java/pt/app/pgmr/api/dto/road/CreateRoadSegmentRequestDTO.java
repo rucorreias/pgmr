@@ -18,7 +18,7 @@ import java.math.BigDecimal;
  * <p>The segment must satisfy the domain rule:
  * endKm > startKm.</p>
  */
-public record CreateRoadSegmentRequest(
+public record CreateRoadSegmentRequestDTO(
         @NotBlank(message = "Road segment code is required")
         @Size(max = 50, message = "Road segment code must not exceed 50 characters")
         String code,

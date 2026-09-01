@@ -15,7 +15,7 @@ import java.math.BigDecimal;
  * New roads use the domain/database defaults:
  * GOOD condition and ACTIVE status.</p>
  */
-public record CreateRoadRequest(
+public record CreateRoadRequestDTO(
         @NotBlank(message = "Road code is required")
         @Size(max = 50, message = "Road code must not exceed 50 characters")
         String code,

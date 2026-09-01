@@ -17,7 +17,7 @@ import java.math.BigDecimal;
  * The road identifier is supplied through the URL and is therefore
  * not part of this request.</p>
  */
-public record UpdateRoadRequest(
+public record UpdateRoadRequestDTO(
         @NotBlank(message = "Road code is required")
         @Size(max = 50, message = "Road code must not exceed 50 characters")
         String code,

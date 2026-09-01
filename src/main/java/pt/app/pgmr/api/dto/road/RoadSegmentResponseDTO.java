@@ -15,7 +15,7 @@ import java.util.UUID;
  * at this stage. The API contract should use a GIS-neutral representation
  * such as GeoJSON when spatial endpoints are introduced.</p>
  */
-public record RoadSegmentResponse(
+public record RoadSegmentResponseDTO(
         UUID id,
         UUID roadId,
         String code,

@@ -11,7 +11,7 @@ import java.util.UUID;
 /**
  * Response representing a road exposed through the API.
  */
-public record RoadResponse(
+public record RoadResponseDTO(
         UUID id,
         String code,
         String name,

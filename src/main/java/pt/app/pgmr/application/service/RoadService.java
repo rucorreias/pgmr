@@ -3,12 +3,12 @@ package pt.app.pgmr.application.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import pt.app.pgmr.api.dto.road.CreateRoadRequest;
-import pt.app.pgmr.api.dto.road.CreateRoadSegmentRequest;
-import pt.app.pgmr.api.dto.road.RoadResponse;
-import pt.app.pgmr.api.dto.road.RoadSegmentResponse;
-import pt.app.pgmr.api.dto.road.UpdateRoadRequest;
-import pt.app.pgmr.api.dto.road.UpdateRoadSegmentRequest;
+import pt.app.pgmr.api.dto.road.CreateRoadRequestDTO;
+import pt.app.pgmr.api.dto.road.CreateRoadSegmentRequestDTO;
+import pt.app.pgmr.api.dto.road.RoadResponseDTO;
+import pt.app.pgmr.api.dto.road.RoadSegmentResponseDTO;
+import pt.app.pgmr.api.dto.road.UpdateRoadRequestDTO;
+import pt.app.pgmr.api.dto.road.UpdateRoadSegmentRequestDTO;
 import pt.app.pgmr.api.mapper.GeometryMapper;
 import pt.app.pgmr.domain.model.Road;
 import pt.app.pgmr.domain.model.RoadSegment;
@@ -73,7 +73,7 @@ public class RoadService {
      * @throws IllegalArgumentException if the road code is already in use
      */
     @Transactional
-    public RoadResponse createRoad(CreateRoadRequest request) {
+    public RoadResponseDTO createRoad(CreateRoadRequestDTO request) {
         validateRoadCodeIsAvailable(request.code());
 
         Road road = Road.builder()
@@ -98,7 +98,7 @@ public class RoadService {
      * @return the requested road
      * @throws IllegalArgumentException if no road exists with the given ID
      */
-    public RoadResponse getRoad(UUID id) {
+    public RoadResponseDTO getRoad(UUID id) {
         return toRoadResponse(findRoadById(id));
     }
 
@@ -109,7 +109,7 @@ public class RoadService {
      * @return the requested road
      * @throws IllegalArgumentException if no road exists with the given code
      */
-    public RoadResponse getRoadByCode(String code) {
+    public RoadResponseDTO getRoadByCode(String code) {
         return roadRepository.findByCode(code)
                 .map(this::toRoadResponse)
                 .orElseThrow(() ->
@@ -124,7 +124,7 @@ public class RoadService {
      *
      * @return all roads
      */
-    public List<RoadResponse> getAllRoads() {
+    public List<RoadResponseDTO> getAllRoads() {
         return roadRepository.findAll()
                 .stream()
                 .map(this::toRoadResponse)
@@ -145,7 +145,7 @@ public class RoadService {
      *                                  by another road
      */
     @Transactional
-    public RoadResponse updateRoad(UUID id, UpdateRoadRequest request) {
+    public RoadResponseDTO updateRoad(UUID id, UpdateRoadRequestDTO request) {
         Road road = findRoadById(id);
 
         if (request.code() != null
@@ -216,9 +216,9 @@ public class RoadService {
      * @throws IllegalArgumentException if the kilometer range is invalid
      */
     @Transactional
-    public RoadSegmentResponse createRoadSegment(
+    public RoadSegmentResponseDTO createRoadSegment(
             UUID roadId,
-            CreateRoadSegmentRequest request
+            CreateRoadSegmentRequestDTO request
     ) {
         Road road = findRoadById(roadId);
 
@@ -263,7 +263,7 @@ public class RoadService {
      * @return the requested segment
      * @throws IllegalArgumentException if no segment exists with the ID
      */
-    public RoadSegmentResponse getRoadSegment(UUID id) {
+    public RoadSegmentResponseDTO getRoadSegment(UUID id) {
         return toRoadSegmentResponse(findRoadSegmentById(id));
     }
 
@@ -274,7 +274,7 @@ public class RoadService {
      * @return the road's segments
      * @throws IllegalArgumentException if the road does not exist
      */
-    public List<RoadSegmentResponse> getRoadSegments(UUID roadId) {
+    public List<RoadSegmentResponseDTO> getRoadSegments(UUID roadId) {
         findRoadById(roadId);
 
         return roadSegmentRepository.findByRoadId(roadId)
@@ -302,9 +302,9 @@ public class RoadService {
      *                                  by another segment of the same road
      */
     @Transactional
-    public RoadSegmentResponse updateRoadSegment(
+    public RoadSegmentResponseDTO updateRoadSegment(
             UUID id,
-            UpdateRoadSegmentRequest request
+            UpdateRoadSegmentRequestDTO request
     ) {
         RoadSegment segment = findRoadSegmentById(id);
         Road road = segment.getRoad();
@@ -628,8 +628,8 @@ public class RoadService {
      * @param road road entity
      * @return road response
      */
-    private RoadResponse toRoadResponse(Road road) {
-        return new RoadResponse(
+    private RoadResponseDTO toRoadResponse(Road road) {
+        return new RoadResponseDTO(
                 road.getId(),
                 road.getCode(),
                 road.getName(),
@@ -649,10 +649,10 @@ public class RoadService {
      * @param segment road segment entity
      * @return road segment response
      */
-    private RoadSegmentResponse toRoadSegmentResponse(
+    private RoadSegmentResponseDTO toRoadSegmentResponse(
             RoadSegment segment
     ) {
-        return new RoadSegmentResponse(
+        return new RoadSegmentResponseDTO(
                 segment.getId(),
                 segment.getRoad().getId(),
                 segment.getCode(),
