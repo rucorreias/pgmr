@@ -1,4 +1,4 @@
-package pt.app.pgmr.application.controller;
+package pt.app.pgmr.api.controller;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
