@@ -1,6 +1,8 @@
 package pt.app.pgmr.api.exception;
 
 import jakarta.validation.ConstraintViolationException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +20,8 @@ import java.util.List;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
 
     /**
      * Handles validation errors for request bodies annotated with @Valid.
@@ -72,7 +76,12 @@ public class ApiExceptionHandler {
      */
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiErrorResponse> handleUnreadableBody(HttpMessageNotReadableException ex) {
-        return buildResponse(HttpStatus.BAD_REQUEST, "Malformed JSON request", List.of(ex.getMostSpecificCause().getMessage()));
+        log.warn("Malformed JSON request", ex);
+        return buildResponse(
+                HttpStatus.BAD_REQUEST,
+                "Malformed JSON request",
+                List.of("The request body could not be parsed.")
+        );
     }
 
     /**
@@ -105,7 +114,12 @@ public class ApiExceptionHandler {
      */
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiErrorResponse> handleDataIntegrity(DataIntegrityViolationException ex) {
-        return buildResponse(HttpStatus.CONFLICT, "Database integrity violation", List.of(ex.getMostSpecificCause().getMessage()));
+        log.error("Database constraint violation", ex);
+        return buildResponse(
+                HttpStatus.CONFLICT,
+                "Database constraint violation",
+                List.of("A database constraint was violated while processing the request.")
+        );
     }
 
     /**
@@ -127,10 +141,11 @@ public class ApiExceptionHandler {
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleGenericException(Exception ex) {
+        log.error("Unhandled exception", ex);
         return buildResponse(
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 "Unexpected error",
-                List.of("An unexpected error occurred while processing the request")
+                List.of("An unexpected error occurred while processing the request.")
         );
     }
 

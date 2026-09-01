@@ -54,6 +54,7 @@ public class RoadSegmentService {
         validateSegmentCodeIsAvailable(roadId, normalizedCode);
         validateSegmentKilometerRange(request.startKm(), request.endKm());
         validateSegmentFitsRoad(road, request.startKm(), request.endKm());
+        validateNoSegmentOverlap(roadId, request.startKm(), request.endKm(), null);
 
         RoadSegment segment = RoadSegment.builder()
                 .road(road)
@@ -150,6 +151,7 @@ public class RoadSegmentService {
         if (request.startKm() != null || request.endKm() != null) {
             validateSegmentKilometerRange(newStartKm, newEndKm);
             validateSegmentFitsRoad(road, newStartKm, newEndKm);
+            validateNoSegmentOverlap(road.getId(), newStartKm, newEndKm, segmentId);
             segment.setStartKm(newStartKm);
             segment.setEndKm(newEndKm);
         }
@@ -262,6 +264,27 @@ public class RoadSegmentService {
         if (endKm.compareTo(road.getLengthKm()) > 0) {
             throw new DomainValidationException("Segment endKm cannot exceed road length");
         }
+    }
+
+    private void validateNoSegmentOverlap(
+            UUID roadId,
+            BigDecimal startKm,
+            BigDecimal endKm,
+            UUID currentSegmentId
+    ) {
+        roadSegmentRepository.findByRoadId(roadId)
+                .stream()
+                .filter(existingSegment -> !existingSegment.getId().equals(currentSegmentId))
+                .filter(existingSegment -> existingSegment.getStartKm() != null
+                        && existingSegment.getEndKm() != null)
+                .filter(existingSegment -> startKm.compareTo(existingSegment.getEndKm()) < 0
+                        && endKm.compareTo(existingSegment.getStartKm()) > 0)
+                .findFirst()
+                .ifPresent(existingSegment -> {
+                    throw new DomainValidationException(
+                            "Road segment overlaps with existing segment: " + existingSegment.getCode()
+                    );
+                });
     }
 
     private String normalizeCode(String code) {
