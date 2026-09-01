@@ -6,6 +6,8 @@ import org.springframework.transaction.annotation.Transactional;
 import pt.app.pgmr.api.dto.road.CreateRoadSegmentRequestDTO;
 import pt.app.pgmr.api.dto.road.RoadSegmentResponseDTO;
 import pt.app.pgmr.api.dto.road.UpdateRoadSegmentRequestDTO;
+import pt.app.pgmr.application.exception.DomainValidationException;
+import pt.app.pgmr.application.exception.ResourceNotFoundException;
 import pt.app.pgmr.api.mapper.GeometryMapper;
 import pt.app.pgmr.domain.model.Road;
 import pt.app.pgmr.domain.model.RoadSegment;
@@ -20,9 +22,9 @@ import java.util.UUID;
 /**
  * Application service for road segment lifecycle operations.
  *
- * <p>This service enforces the road-segment domain invariants, including
- * parent-road validation, unique segment codes within a road and kilometer-range
- * constraints. It also maps JPA entities to API responses.</p>
+ * <p>This service enforces the segment domain invariants, including parent-road
+ * validation, unique segment codes within a road and kilometer-range
+ * consistency before persisting changes.</p>
  */
 @Service
 @RequiredArgsConstructor
@@ -34,23 +36,28 @@ public class RoadSegmentService {
     private final GeometryMapper geometryMapper;
 
     /**
-     * Creates a new segment attached to an existing road.
+     * Creates a segment and associates it with an existing road.
      *
      * @param roadId target road identifier
      * @param request segment creation payload
-     * @return the created segment response
+     * @return created segment response
      */
     @Transactional
     public RoadSegmentResponseDTO createRoadSegment(UUID roadId, CreateRoadSegmentRequestDTO request) {
-        Road road = findRoadById(roadId);
+        if (request == null) {
+            throw new DomainValidationException("Road segment payload is required");
+        }
 
-        validateSegmentCodeIsAvailable(roadId, request.code());
+        Road road = findRoadById(roadId);
+        String normalizedCode = normalizeCode(request.code());
+
+        validateSegmentCodeIsAvailable(roadId, normalizedCode);
         validateSegmentKilometerRange(request.startKm(), request.endKm());
         validateSegmentFitsRoad(road, request.startKm(), request.endKm());
 
         RoadSegment segment = RoadSegment.builder()
                 .road(road)
-                .code(request.code().trim())
+                .code(normalizedCode)
                 .name(normalizeOptionalText(request.name()))
                 .startKm(request.startKm())
                 .endKm(request.endKm())
@@ -62,7 +69,7 @@ public class RoadSegmentService {
     }
 
     /**
-     * Retrieves a segment by its unique identifier.
+     * Retrieves a segment by its identifier.
      *
      * @param id segment identifier
      * @return the segment response
@@ -72,7 +79,7 @@ public class RoadSegmentService {
     }
 
     /**
-     * Retrieves a specific segment for a given parent road.
+     * Retrieves a specific segment associated with a road.
      *
      * @param roadId parent road identifier
      * @param segmentId segment identifier
@@ -83,7 +90,7 @@ public class RoadSegmentService {
         RoadSegment segment = findRoadSegmentById(segmentId);
 
         if (!segment.getRoad().getId().equals(roadId)) {
-            throw new IllegalArgumentException(
+            throw new ResourceNotFoundException(
                     "Road segment not found for road id: " + roadId + " and segment id: " + segmentId
             );
         }
@@ -92,10 +99,10 @@ public class RoadSegmentService {
     }
 
     /**
-     * Retrieves all segments for a road.
+     * Retrieves all segments for a specific road.
      *
      * @param roadId parent road identifier
-     * @return the list of segment responses for the road
+     * @return list of segment responses
      */
     public List<RoadSegmentResponseDTO> getRoadSegments(UUID roadId) {
         findRoadById(roadId);
@@ -107,12 +114,12 @@ public class RoadSegmentService {
     }
 
     /**
-     * Updates an existing segment under the parent road.
+     * Updates an existing segment while ensuring it belongs to the provided road.
      *
      * @param roadId parent road identifier
      * @param segmentId segment identifier
-     * @param request update payload
-     * @return the updated segment response
+     * @param request segment update payload
+     * @return updated segment response
      */
     @Transactional
     public RoadSegmentResponseDTO updateRoadSegment(
@@ -120,12 +127,17 @@ public class RoadSegmentService {
             UUID segmentId,
             UpdateRoadSegmentRequestDTO request
     ) {
+        if (request == null) {
+            throw new DomainValidationException("Road segment payload is required");
+        }
+
         RoadSegment segment = findRoadSegmentByIdInRoad(roadId, segmentId);
         Road road = segment.getRoad();
 
         if (request.code() != null && !request.code().equals(segment.getCode())) {
-            validateSegmentCodeIsAvailableForUpdate(road.getId(), request.code(), segmentId);
-            segment.setCode(request.code().trim());
+            String normalizedCode = normalizeCode(request.code());
+            validateSegmentCodeIsAvailableForUpdate(road.getId(), normalizedCode, segmentId);
+            segment.setCode(normalizedCode);
         }
 
         if (request.name() != null) {
@@ -168,7 +180,7 @@ public class RoadSegmentService {
     }
 
     /**
-     * Deletes a segment by its identifier without checking the parent road.
+     * Deletes a segment by identifier.
      *
      * @param id segment identifier
      */
@@ -180,18 +192,18 @@ public class RoadSegmentService {
 
     private Road findRoadById(UUID id) {
         return roadRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Road not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Road not found with id: " + id));
     }
 
     private RoadSegment findRoadSegmentById(UUID id) {
         return roadSegmentRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Road segment not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Road segment not found with id: " + id));
     }
 
     private RoadSegment findRoadSegmentByIdInRoad(UUID roadId, UUID segmentId) {
         RoadSegment segment = findRoadSegmentById(segmentId);
         if (!segment.getRoad().getId().equals(roadId)) {
-            throw new IllegalArgumentException(
+            throw new ResourceNotFoundException(
                     "Road segment not found for road id: " + roadId + " and segment id: " + segmentId
             );
         }
@@ -200,7 +212,7 @@ public class RoadSegmentService {
 
     private void validateSegmentCodeIsAvailable(UUID roadId, String code) {
         if (roadSegmentRepository.existsByRoadIdAndCode(roadId, code)) {
-            throw new IllegalArgumentException(
+            throw new DomainValidationException(
                     "Road segment code already exists for this road: " + code
             );
         }
@@ -214,7 +226,7 @@ public class RoadSegmentService {
         roadSegmentRepository.findByRoadIdAndCode(roadId, code)
                 .filter(existingSegment -> !existingSegment.getId().equals(currentSegmentId))
                 .ifPresent(existingSegment -> {
-                    throw new IllegalArgumentException(
+                    throw new DomainValidationException(
                             "Road segment code already exists for this road: " + code
                     );
                 });
@@ -222,19 +234,19 @@ public class RoadSegmentService {
 
     private void validateSegmentKilometerRange(BigDecimal startKm, BigDecimal endKm) {
         if (startKm == null || endKm == null) {
-            throw new IllegalArgumentException("Segment startKm and endKm are required");
+            throw new DomainValidationException("Segment startKm and endKm are required");
         }
 
         if (startKm.signum() < 0) {
-            throw new IllegalArgumentException("Segment startKm cannot be negative");
+            throw new DomainValidationException("Segment startKm cannot be negative");
         }
 
         if (endKm.signum() < 0) {
-            throw new IllegalArgumentException("Segment endKm cannot be negative");
+            throw new DomainValidationException("Segment endKm cannot be negative");
         }
 
         if (endKm.compareTo(startKm) <= 0) {
-            throw new IllegalArgumentException("Segment endKm must be greater than startKm");
+            throw new DomainValidationException("Segment endKm must be greater than startKm");
         }
     }
 
@@ -244,12 +256,24 @@ public class RoadSegmentService {
         }
 
         if (startKm.compareTo(road.getLengthKm()) > 0) {
-            throw new IllegalArgumentException("Segment startKm cannot exceed road length");
+            throw new DomainValidationException("Segment startKm cannot exceed road length");
         }
 
         if (endKm.compareTo(road.getLengthKm()) > 0) {
-            throw new IllegalArgumentException("Segment endKm cannot exceed road length");
+            throw new DomainValidationException("Segment endKm cannot exceed road length");
         }
+    }
+
+    private String normalizeCode(String code) {
+        if (code == null) {
+            throw new DomainValidationException("Road segment code cannot be null");
+        }
+
+        String normalized = code.trim();
+        if (normalized.isEmpty()) {
+            throw new DomainValidationException("Road segment code cannot be blank");
+        }
+        return normalized;
     }
 
     private String normalizeOptionalText(String value) {

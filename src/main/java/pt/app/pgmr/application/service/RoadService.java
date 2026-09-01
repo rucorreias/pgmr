@@ -6,6 +6,8 @@ import org.springframework.transaction.annotation.Transactional;
 import pt.app.pgmr.api.dto.road.CreateRoadRequestDTO;
 import pt.app.pgmr.api.dto.road.RoadResponseDTO;
 import pt.app.pgmr.api.dto.road.UpdateRoadRequestDTO;
+import pt.app.pgmr.application.exception.DomainValidationException;
+import pt.app.pgmr.application.exception.ResourceNotFoundException;
 import pt.app.pgmr.domain.model.Road;
 import pt.app.pgmr.repository.RoadRepository;
 import pt.app.pgmr.repository.RoadSegmentRepository;
@@ -40,9 +42,12 @@ public class RoadService {
     public RoadResponseDTO createRoad(CreateRoadRequestDTO request) {
         validateRoadCodeIsAvailable(request.code());
 
+        String normalizedCode = normalizeCode(request.code());
+        String normalizedName = normalizeRequiredText(request.name(), "Road name");
+
         Road road = Road.builder()
-                .code(request.code().trim())
-                .name(request.name().trim())
+                .code(normalizedCode)
+                .name(normalizedName)
                 .roadType(request.roadType())
                 .description(normalizeOptionalText(request.description()))
                 .lengthKm(request.lengthKm())
@@ -73,7 +78,7 @@ public class RoadService {
     public RoadResponseDTO getRoadByCode(String code) {
         return roadRepository.findByCode(code)
                 .map(this::toRoadResponse)
-                .orElseThrow(() -> new IllegalArgumentException("Road not found with code: " + code));
+                .orElseThrow(() -> new ResourceNotFoundException("Road not found with code: " + code));
     }
 
     /**
@@ -101,11 +106,11 @@ public class RoadService {
 
         if (request.code() != null && !request.code().equals(road.getCode())) {
             validateRoadCodeIsAvailableForUpdate(request.code(), id);
-            road.setCode(request.code().trim());
+            road.setCode(normalizeCode(request.code()));
         }
 
         if (request.name() != null) {
-            road.setName(request.name().trim());
+            road.setName(normalizeRequiredText(request.name(), "Road name"));
         }
 
         if (request.roadType() != null) {
@@ -145,28 +150,38 @@ public class RoadService {
         roadRepository.delete(road);
     }
 
+    /**
+     * Finds a road by its identifier.
+     *
+     * @param id road identifier
+     * @return the road entity
+     */
     private Road findRoadById(UUID id) {
         return roadRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Road not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Road not found with id: " + id));
     }
 
     private void validateRoadCodeIsAvailable(String code) {
-        if (roadRepository.existsByCode(code)) {
-            throw new IllegalArgumentException("Road code already exists: " + code);
+        String normalizedCode = normalizeCode(code);
+
+        if (roadRepository.existsByCode(normalizedCode)) {
+            throw new DomainValidationException("Road code already exists: " + normalizedCode);
         }
     }
 
     private void validateRoadCodeIsAvailableForUpdate(String code, UUID currentRoadId) {
-        roadRepository.findByCode(code)
+        String normalizedCode = normalizeCode(code);
+
+        roadRepository.findByCode(normalizedCode)
                 .filter(existingRoad -> !existingRoad.getId().equals(currentRoadId))
                 .ifPresent(existingRoad -> {
-                    throw new IllegalArgumentException("Road code already exists: " + code);
+                    throw new DomainValidationException("Road code already exists: " + normalizedCode);
                 });
     }
 
     private void validateRoadLength(BigDecimal lengthKm) {
         if (lengthKm != null && lengthKm.signum() < 0) {
-            throw new IllegalArgumentException("Road length cannot be negative");
+            throw new DomainValidationException("Road length cannot be negative");
         }
     }
 
@@ -180,10 +195,34 @@ public class RoadService {
                 .filter(segment -> segment.getEndKm() != null && segment.getEndKm().compareTo(newLengthKm) > 0)
                 .findFirst()
                 .ifPresent(segment -> {
-                    throw new IllegalArgumentException(
+                    throw new DomainValidationException(
                             "Road length cannot be reduced below the endKm of existing segment: " + segment.getCode()
                     );
                 });
+    }
+
+    private String normalizeCode(String code) {
+        if (code == null) {
+            return null;
+        }
+
+        String normalized = code.trim();
+        if (normalized.isEmpty()) {
+            throw new DomainValidationException("Road code cannot be blank");
+        }
+        return normalized;
+    }
+
+    private String normalizeRequiredText(String value, String fieldName) {
+        if (value == null) {
+            throw new DomainValidationException(fieldName + " cannot be null");
+        }
+
+        String normalized = value.trim();
+        if (normalized.isEmpty()) {
+            throw new DomainValidationException(fieldName + " cannot be blank");
+        }
+        return normalized;
     }
 
     private String normalizeOptionalText(String value) {

@@ -116,6 +116,8 @@ CREATE INDEX idx_roads_condition
 CREATE INDEX idx_road_segments_condition
     ON road_segments (condition);
 
+CREATE EXTENSION IF NOT EXISTS postgis;
+
 CREATE INDEX idx_road_segments_geometry
     ON road_segments
     USING GIST (geometry);
