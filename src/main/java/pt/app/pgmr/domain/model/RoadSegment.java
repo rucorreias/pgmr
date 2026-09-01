@@ -46,10 +46,10 @@ public class RoadSegment {
     @Column(length = 255)
     private String name;
 
-    @Column(name = "start_km", precision = 10, scale = 3)
+    @Column(name = "start_km", precision = 10, scale = 3, nullable = false)
     private BigDecimal startKm;
 
-    @Column(name = "end_km", precision = 10, scale = 3)
+    @Column(name = "end_km", precision = 10, scale = 3, nullable = false)
     private BigDecimal endKm;
 
     @Column(columnDefinition = "geometry(LineString,4326)")
